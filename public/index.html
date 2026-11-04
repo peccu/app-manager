@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#14171c" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <title>App Manager</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>App Manager</h1>
+      <div id="summary" class="summary" aria-live="polite"></div>
+      <div class="spacer"></div>
+      <button id="btn-add" class="btn primary" type="button">+ Add app</button>
+    </header>
+
+    <div id="banner" class="banner" hidden></div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="apps" aria-selected="true">Apps</button>
+      <button class="tab" role="tab" data-tab="ports" aria-selected="false">Ports <span id="port-badge"></span></button>
+      <div class="spacer"></div>
+      <div class="tools">
+        <label class="filter">
+          <span class="sr-only">Filter</span>
+          <input id="filter" type="search" placeholder="Filter by name, folder, command or port" />
+        </label>
+        <label class="check"><input id="only-running" type="checkbox" /> Running only</label>
+      </div>
+    </nav>
+
+    <main>
+      <section id="view-apps" class="view"></section>
+      <section id="view-ports" class="view" hidden></section>
+    </main>
+
+    <!-- Logs -->
+    <section id="log-panel" class="log-panel" hidden aria-label="Logs">
+      <div class="log-head">
+        <strong id="log-title"></strong>
+        <span id="log-sub" class="muted"></span>
+        <div class="spacer"></div>
+        <label class="check"><input id="log-follow" type="checkbox" checked /> Auto-scroll</label>
+        <button id="log-clear" class="btn small" type="button">Clear</button>
+        <button id="log-close" class="btn small" type="button" aria-label="Close logs">✕</button>
+      </div>
+      <pre id="log-body" class="log-body" tabindex="0"></pre>
+    </section>
+
+    <!-- App editor -->
+    <dialog id="dlg-app" class="dialog">
+      <form id="form-app" method="dialog">
+        <h2 id="dlg-title">Add app</h2>
+        <div class="grid2">
+          <label>Name <input name="name" required placeholder="my-service" /></label>
+          <label
+            >Folder (absolute path)
+            <span class="row">
+              <input name="cwd" required placeholder="/Users/me/Codes/my-service" autocapitalize="off" autocorrect="off" spellcheck="false" />
+              <button id="btn-inspect" class="btn small" type="button">Inspect folder</button>
+            </span>
+          </label>
+        </div>
+        <label>Notes <input name="description" placeholder="What it is for, anything to remember" /></label>
+        <div id="suggestions" class="suggestions"></div>
+
+        <div class="cmd-head">
+          <h3>Start commands</h3>
+          <button id="btn-add-cmd" class="btn small" type="button">+ Command</button>
+          <button id="btn-add-compose" class="btn small" type="button">+ docker compose</button>
+        </div>
+        <div id="cmd-list"></div>
+
+        <p id="form-error" class="error" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="btn-delete-app" class="btn danger" type="button">Delete</button>
+          <div class="spacer"></div>
+          <button class="btn" value="cancel" formnovalidate>Cancel</button>
+          <button id="btn-save" class="btn primary" type="submit" value="save">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="tpl-cmd">
+      <fieldset class="cmd-edit">
+        <div class="row">
+          <label class="w-name">Name <input data-k="name" placeholder="dev" /></label>
+          <label class="w-type"
+            >Type
+            <select data-k="type">
+              <option value="process">Command</option>
+              <option value="compose">docker compose</option>
+            </select>
+          </label>
+          <label class="w-ports">Ports <input data-k="ports" inputmode="numeric" placeholder="3000, 5173" /></label>
+          <button class="btn small danger" data-act="remove" type="button" aria-label="Remove this command">Remove</button>
+        </div>
+        <div class="only-process">
+          <label>Command <input data-k="command" class="mono" placeholder="bun run dev" autocapitalize="off" autocorrect="off" spellcheck="false" /></label>
+        </div>
+        <div class="only-compose row">
+          <label class="grow">Compose file(s) — default if empty, comma-separated<input data-k="composeFile" class="mono" placeholder="compose.prod.yml" autocapitalize="off" spellcheck="false" /></label>
+          <label>Project name <input data-k="projectName" class="mono" placeholder="optional" autocapitalize="off" spellcheck="false" /></label>
+          <label class="check"><input data-k="build" type="checkbox" /> --build</label>
+        </div>
+        <label>Environment (one KEY=VALUE per line)<textarea data-k="env" class="mono" rows="1" placeholder="NODE_ENV=development" autocapitalize="off" spellcheck="false"></textarea></label>
+      </fieldset>
+    </template>
+
+    <div id="toast" class="toast" role="status" popover="manual"></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
