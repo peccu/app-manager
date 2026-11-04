@@ -63,10 +63,19 @@ function cmdOr404(cmdId: string) {
 }
 
 // 任意コマンドを実行できる API なので、他サイトからのリクエスト（CSRF / DNS rebinding）を拒否する
-const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`, `[::1]:${PORT}`, ...(process.env.ALLOWED_HOSTS?.split(",") ?? [])]);
+// ALLOWED_HOSTS には "host:port" か "host"（ポートを問わない）をカンマ区切りで指定する
+const ALLOWED_HOSTS = new Set([
+  `localhost:${PORT}`,
+  `127.0.0.1:${PORT}`,
+  `[::1]:${PORT}`,
+  ...(process.env.ALLOWED_HOSTS?.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean) ?? []),
+]);
+const hostnameOf = (host: string) => host.replace(/:\d+$/, "");
 function guard(req: Request) {
-  const host = req.headers.get("host") ?? "";
-  if (!ALLOWED_HOSTS.has(host)) throw new HttpError(403, `Host not allowed: ${host}`);
+  const host = (req.headers.get("host") ?? "").toLowerCase();
+  if (!ALLOWED_HOSTS.has(host) && !ALLOWED_HOSTS.has(hostnameOf(host))) {
+    throw new HttpError(403, `Host not allowed: ${host} (add it to ALLOWED_HOSTS)`);
+  }
   if (req.method !== "GET" && req.headers.get("x-app-manager") !== "1") {
     throw new HttpError(403, "x-app-manager header is required");
   }
@@ -212,3 +221,4 @@ const server = Bun.serve({
 });
 
 console.log(`App Manager: http://${server.hostname}:${server.port}`);
+if (process.env.ALLOWED_HOSTS) console.log(`Allowed hosts: ${[...ALLOWED_HOSTS].join(", ")}`);

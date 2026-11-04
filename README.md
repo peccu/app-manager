@@ -1,69 +1,122 @@
 # App Manager
 
-ローカルで起動するアプリ（bun / node / python / docker compose など）を、
-「どのフォルダで・どのコマンドを・どのポートで」動かすかごと一元管理する Web UI です。
-pm2 と Portainer の中間のような役割で、依存パッケージなし（Bun のみ）で動きます。
-UI は英語で、スマホの画面幅にも対応しています。
+English | [日本語](README.ja.md)
 
-## 起動
+A small web UI for the apps you run locally — bun, node, python, docker compose and so on.
+It keeps track of **which folder, which command and which ports** each app uses, and shows what is running right now.
+Think of it as something between pm2 and Portainer. It runs on Bun with no runtime dependencies,
+and the UI works on phone-sized screens too.
+
+## Getting started
 
 ```bash
-bun install   # 型定義のみ。実行には不要
+bun install   # type definitions only; not needed to run
 bun start     # http://127.0.0.1:4949
 ```
 
-| 環境変数 | 既定 | 説明 |
+| Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | `4949` | 待ち受けポート |
-| `HOST` | `127.0.0.1` | 待ち受けアドレス。任意のコマンドを実行できるため外部公開しないこと |
-| `APP_MANAGER_DATA` | `./data` | 設定・状態・ログの保存先 |
-| `ALLOWED_HOSTS` | — | `localhost:4949` 以外の Host ヘッダーを許可したい場合にカンマ区切りで指定 |
+| `PORT` | `4949` | Port to listen on |
+| `HOST` | `127.0.0.1` | Address to listen on. App Manager can run arbitrary commands, so never expose it to an untrusted network |
+| `APP_MANAGER_DATA` | `./data` | Where settings, state and logs are stored |
+| `ALLOWED_HOSTS` | — | Extra `Host` headers to accept, comma-separated. Use `host:port`, or just `host` to accept any port |
 
-> ターミナルから `bun start` したときの環境変数（PATH など）が、管理下のコマンドにも引き継がれます。
-> nvm / pyenv などはそのシェルで有効になっている前提です。
+> Commands started by App Manager inherit the environment (PATH etc.) of the shell where you ran `bun start`.
+> Tools like nvm or pyenv need to be active in that shell.
 
-## できること
+## Using it from another machine (Tailscale)
 
-- **アプリ = フォルダ** 単位で登録し、その下に **複数の起動コマンド** を持てます
-  （例: `dev` = `bun run dev`、`prod` = `docker compose -f compose.prod.yml up -d --build`）
-- コマンドの種類
-  - **コマンド**: `$SHELL -c` で detached 起動。出力は `data/logs/<id>.log` に保存。
-    App Manager を再起動してもプロセスは生き続け、PID で追跡を再開します。停止はプロセスグループごと SIGTERM → 5 秒後 SIGKILL。
-  - **docker compose**: `up -d [--build]` / `down`。状態は `docker ps` の compose ラベル（作業フォルダ・設定ファイル・プロジェクト名）で判定します。
-- **起動状態の可視化**
-  - Running（起動中）/ Working（処理中）/ Stopped（停止）/ Crashed（異常終了）
-  - **Running (external)**（管理外で起動中）: ターミナルなど App Manager 以外で起動したプロセスでも、
-    そのアプリのフォルダで動いていて定義ポートを使っていれば検出します
-- **ポート一覧**（`lsof` と `docker ps` から、いま LISTEN している全 TCP ポート）
-  - どのプロセス / コンテナが、どのフォルダで、どのコマンドで使っているか
-  - 判定: `Note` 同じアプリの別コマンドで共用 / `Warning` 複数アプリで同じポートを定義・登録外プロセスが使用中 / `Conflict` 同時に起動中
-  - 起動ボタンを押したとき、定義ポートが使用中なら確認ダイアログを出します
-  - **Register as app**: 登録外で動いているプロセス / compose コンテナから、起動フォルダ・コマンド・使用ポートを入力済みの状態で登録画面を開きます。
-    そのフォルダがすでに登録済みなら**Add to app** になります（OS のデーモンなど cwd が `/` のものは対象外）
-- **Inspect folder** で `package.json` の scripts、`compose*.yml` の ports、`manage.py` / FastAPI などから起動コマンドの候補を提案
-- `cd <フォルダ> && <コマンド>` をワンクリックでコピー
+App Manager has no authentication. To use it from another machine, put it behind a private network
+such as Tailscale. There are two ways to do this.
 
-## データ
+### A. `tailscale serve` (recommended)
 
-- `data/apps.json` … アプリ・コマンドの定義（手で編集しても OK。編集後は App Manager を再起動）
-- `data/state.json` … 起動した PID など
-- `data/logs/` … ログ（5MB を超えると起動時に `.log.1` へローテーション）
+App Manager keeps listening on 127.0.0.1, and Tailscale proxies it over HTTPS to your tailnet only.
+Because it is HTTPS, browser features such as the clipboard API work as usual.
 
-## Docker で動かさない理由
+```bash
+# 1. Find your machine name (e.g. mymac.tail1234.ts.net)
+tailscale status --self
 
-App Manager 自体をコンテナで動かすと、ホストの bun / node / python を起動できず、
-ホストのポートやプロセス（`lsof`）も見えなくなるため、ホスト上で Bun で動かす構成にしています。
-常駐させたい場合は launchd（`~/Library/LaunchAgents`）や `bun start` をターミナルで動かしておく運用を想定しています。
+# 2. Start App Manager with that name allowed
+ALLOWED_HOSTS=mymac.tail1234.ts.net bun start
 
-## 構成
+# 3. In another terminal, share it on your tailnet (runs in the background)
+tailscale serve --bg 4949
+```
+
+Then open `https://mymac.tail1234.ts.net` from the other machine.
+
+- The first time, Tailscale may ask you to enable HTTPS certificates for your tailnet. Follow the link it prints.
+- To stop sharing, run `tailscale serve reset`.
+- With the macOS Tailscale app, the CLI is at `/Applications/Tailscale.app/Contents/MacOS/Tailscale`.
+
+### B. Listen on the Tailscale IP directly
+
+If you don't use `tailscale serve`, bind App Manager to the Tailscale interface only (it is not exposed to your LAN):
+
+```bash
+TS_IP=$(tailscale ip -4)   # e.g. 100.64.0.1
+HOST=$TS_IP ALLOWED_HOSTS=$TS_IP,mymac,mymac.tail1234.ts.net bun start
+```
+
+Then open `http://100.64.0.1:4949` (or `http://mymac:4949` with MagicDNS).
+Traffic is encrypted by WireGuard, but the browser still treats the page as plain HTTP (the Copy buttons use a fallback that works without HTTPS).
+
+### Things to keep in mind
+
+- Everyone in your tailnet, including devices shared with you, can run arbitrary commands through App Manager.
+  Use Tailscale ACLs to limit who can reach ports 443 / 4949 on this machine if needed.
+- If you see `Host not allowed: ...`, add that host name to `ALLOWED_HOSTS`.
+- Port links open on the same host name you used for App Manager (e.g. `http://mymac.tail1234.ts.net:3000`).
+  They only work from another machine if the app itself listens on `0.0.0.0` or the Tailscale IP.
+
+## Features
+
+- Register an **app per folder**, each with **several start commands**
+  (e.g. `dev` = `bun run dev`, `prod` = `docker compose -f compose.prod.yml up -d --build`)
+- Command types
+  - **Command**: started detached via `$SHELL -c`, with output written to `data/logs/<id>.log`.
+    Processes keep running when App Manager restarts, and tracking resumes by PID. Stop sends SIGTERM to the whole process group, then SIGKILL after 5 seconds.
+  - **docker compose**: `up -d [--build]` / `down`. Status comes from the compose labels in `docker ps` (working folder, config files, project name).
+- **Status at a glance**
+  - Running / Working / Stopped / Crashed
+  - **Running (external)**: detects processes started outside App Manager (e.g. from a terminal)
+    when they run in the app's folder and use one of its ports
+- **Ports** tab: every TCP port that is listening right now, from `lsof` and `docker ps`
+  - Which process or container uses it, from which folder, with which command
+  - Levels: `Note` shared by commands of the same app / `Warning` defined by several apps, or used by an unregistered process / `Conflict` running at the same time
+  - Asks for confirmation before starting a command whose port is already taken
+  - **Register as app**: opens the editor pre-filled with the folder, command and ports of an unregistered process or compose container.
+    If the folder is already registered, it becomes **Add to app** (OS daemons whose working folder is `/` are skipped)
+- **Inspect folder** suggests start commands from `package.json` scripts, ports in `compose*.yml`, `manage.py`, FastAPI apps and more
+- Copy `cd <folder> && <command>` with one click
+
+## Data
+
+- `data/apps.json` — app and command definitions (you can edit it by hand; restart App Manager afterwards)
+- `data/state.json` — PIDs of started processes, etc.
+- `data/logs/` — logs (rotated to `.log.1` on start once they exceed 5 MB)
+
+## Why not run it in Docker?
+
+Inside a container, App Manager could not start bun / node / python on the host,
+and it could not see the host's ports or processes (`lsof`). So it runs directly on the host with Bun.
+To keep it running in the background, use launchd (`~/Library/LaunchAgents`) or just leave `bun start` running in a terminal.
+
+## Requirements
+
+Tested on macOS. It relies on `lsof` and `ps`, so Linux should work too, but this has not been tested. Windows is not supported.
+
+## Project layout
 
 ```
 src/
-  server.ts   HTTP API と静的ファイル配信（CSRF / DNS rebinding 対策あり）
-  store.ts    apps.json / state.json の読み書き
-  runner.ts   起動・停止・ログ（process / compose）
-  system.ts   lsof・ps・docker ps によるスナップショット
-  status.ts   設定と実態の突き合わせ、ポート重複・衝突の判定
-  inspect.ts  フォルダから起動コマンド候補を推測
-public/       UI（ビルド不要の素の HTML/CSS/JS）
+  server.ts   HTTP API and static files (with CSRF / DNS rebinding protection)
+  store.ts    reads and writes apps.json / state.json
+  runner.ts   start, stop and logs (process / compose)
+  system.ts   snapshots from lsof, ps and docker ps
+  status.ts   matches config against reality; port duplicate / conflict checks
+  inspect.ts  guesses start commands from a folder
+public/       UI (plain HTML/CSS/JS, no build step)
 ```

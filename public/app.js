@@ -26,6 +26,24 @@ async function api(path, opts = {}) {
   return body;
 }
 
+// 別マシンから開いたとき（Tailscale など）も、アプリのポートは App Manager と同じホストで開く
+const portUrl = (port) => `http://${location.hostname.includes(":") ? `[${location.hostname}]` : location.hostname}:${port}`;
+
+// navigator.clipboard は HTTPS か localhost でしか使えないので、http://<IP> で開いたとき用の代替手段を用意する
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  (document.querySelector("dialog[open]") ?? document.body).append(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  ta.remove();
+  if (!ok) throw new Error("Clipboard is not available");
+}
+
 function toast(msg, ms = 3500) {
   const t = $("#toast");
   t.textContent = msg;
@@ -152,7 +170,7 @@ function cmdRow(app, c) {
     .map((p) => {
       const cls = [p.inUse ? "live" : "", p.level !== "ok" ? p.level : ""].join(" ");
       const title = [p.inUse ? "In use" : "Free", ...p.messages].join("\n");
-      return `<a class="port ${cls}" href="http://localhost:${p.port}" target="_blank" rel="noopener" title="${esc(title)}">${p.level === "warn" || p.level === "error" ? "⚠ " : ""}${p.port}</a>`;
+      return `<a class="port ${cls}" href="${portUrl(p.port)}" target="_blank" rel="noopener" title="${esc(title)}">${p.level === "warn" || p.level === "error" ? "⚠ " : ""}${p.port}</a>`;
     })
     .join("");
   const full = `cd ${shq(app.cwd)} && ${cmdSummary(c)}`;
@@ -212,7 +230,7 @@ function renderPorts() {
             .join("")
         : `<span class="muted">Free</span>`;
       return `<tr class="${r.level}">
-        <td data-label="Port"><a class="port ${r.owners.length ? "live" : ""}" href="http://localhost:${r.port}" target="_blank" rel="noopener">${r.port}</a></td>
+        <td data-label="Port"><a class="port ${r.owners.length ? "live" : ""}" href="${portUrl(r.port)}" target="_blank" rel="noopener">${r.port}</a></td>
         <td data-label="Level"><span class="level ${r.level}">${LEVEL_LABEL[r.level]}</span></td>
         <td data-label="Defined by">${declared}</td>
         <td data-label="Used by">${owners}</td>
@@ -260,7 +278,7 @@ document.addEventListener("click", async (ev) => {
       toast("Restarted");
     } else if (act === "logs") openLog(id);
     else if (act === "copy") {
-      await navigator.clipboard.writeText(btn.dataset.text);
+      await copyText(btn.dataset.text);
       toast(`Copied:\n${btn.dataset.text}`);
     } else if (act === "edit") openEditor(btn.dataset.app);
     else if (act === "goto-ports") switchTab("ports");
