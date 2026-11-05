@@ -241,3 +241,4 @@ body:has(.log-panel:not([hidden])) .toast { bottom: calc(38vh + 12px); }
   body:has(.log-panel:not([hidden])) .toast { bottom: calc(60dvh + 12px); }
   .toast { inset: auto 12px max(12px, env(safe-area-inset-bottom)) 12px; max-width: none; }
 }
+.pulling { color: var(--info); font-weight: 600; }

@@ -78,7 +78,7 @@ Traffic is encrypted by WireGuard, but the browser still treats the page as plai
 - Command types
   - **Command**: started detached via `$SHELL -c`, with output written to `data/logs/<id>.log`.
     Processes keep running when App Manager restarts, and tracking resumes by PID. Stop sends SIGTERM to the whole process group, then SIGKILL after 5 seconds.
-  - **docker compose**: `up -d [--build]` / `down`. Status comes from the compose labels in `docker ps` (working folder, config files, project name).
+  - **docker compose**: `up -d [--build]` / `down`. **Pull** runs `docker compose pull`; its output appears in Logs. Status comes from the compose labels in `docker ps` (working folder, config files, project name).
 - **Status at a glance**
   - Running / Working / Stopped / Crashed
   - **Running (external)**: detects processes started outside App Manager (e.g. from a terminal)

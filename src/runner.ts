@@ -23,7 +23,8 @@ const MAX_LOG_BYTES = 5 * 1024 * 1024;
 const SHELL = process.env.SHELL || "/bin/zsh";
 
 // compose の up/down 実行中ジョブ（メモリ上のみ）
-const composeJobs = new Map<string, { action: "up" | "down"; startedAt: string }>();
+export type ComposeAction = "up" | "down" | "pull";
+const composeJobs = new Map<string, { action: ComposeAction; startedAt: string }>();
 
 export function isAlive(pid: number): boolean {
   try {
@@ -176,10 +177,12 @@ export function matchContainers(app: App, cmd: Command, containers: Container[])
 
 export const composeJob = (cmdId: string) => composeJobs.get(cmdId);
 
-function runCompose(app: App, cmd: Command, action: "up" | "down") {
-  if (composeJobs.has(cmd.id)) throw new HttpError(409, "docker compose is already running for this command");
+function runCompose(app: App, cmd: Command, action: ComposeAction) {
+  const job = composeJobs.get(cmd.id);
+  if (job) throw new HttpError(409, `docker compose ${job.action} is already running for this command`);
   const args = composeArgs(app, cmd);
   if (action === "up") args.push("up", "-d", ...(cmd.build ? ["--build"] : []));
+  else if (action === "pull") args.push("pull");
   else args.push("down");
   const fd = openLog(cmd.id);
   banner(fd, `docker ${args.join(" ")}  (cwd: ${app.cwd})`);
@@ -212,6 +215,13 @@ export async function start(app: App, cmd: Command) {
   } else {
     startProcess(app, cmd);
   }
+}
+
+/** docker compose pull（compose 型のみ）。時間がかかるので待たない。進捗はログで確認 */
+export function pull(app: App, cmd: Command) {
+  if (cmd.type !== "compose") throw new HttpError(400, "Pull is only available for docker compose commands");
+  assertCwd(app);
+  void runCompose(app, cmd, "pull");
 }
 
 export async function stop(app: App, cmd: Command) {

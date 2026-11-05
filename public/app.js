@@ -158,11 +158,12 @@ function fmtTime(iso) {
 
 function cmdRow(app, c) {
   const running = c.status === "running" || c.status === "starting";
-  const busy = c.status === "starting";
+  const busy = c.status === "starting" || !!c.job;
   let sub = "";
   if (c.status === "running" && c.pid) sub = `PID ${c.pid} · since ${fmtTime(c.startedAt)}`;
   if (c.type === "compose" && c.containers.length)
     sub = c.containers.map((x) => `${esc(x.service ?? x.name)}: ${esc(x.status)}`).join("<br>");
+  if (c.job === "pull") sub = `<span class="pulling">Pulling images…</span>${sub ? `<br>${sub}` : ""}`;
   if (c.status === "external") sub = "A process in this folder is using the port (started from a terminal?)";
   if (c.lastExit && c.status !== "running" && c.type === "process")
     sub = `Last exit ${fmtTime(c.lastExit.at)} (${c.lastExit.signal ?? `code ${c.lastExit.code}`})`;
@@ -184,7 +185,12 @@ function cmdRow(app, c) {
         running
           ? `<button class="btn small stop" data-act="stop" data-cmd="${c.id}" ${busy ? "disabled" : ""} type="button">Stop</button>
              <button class="btn small" data-act="restart" data-cmd="${c.id}" ${busy ? "disabled" : ""} type="button">Restart</button>`
-          : `<button class="btn small start" data-act="start" data-cmd="${c.id}" type="button">Start</button>`
+          : `<button class="btn small start" data-act="start" data-cmd="${c.id}" ${busy ? "disabled" : ""} type="button">Start</button>`
+      }
+      ${
+        c.type === "compose"
+          ? `<button class="btn small" data-act="pull" data-cmd="${c.id}" ${busy ? "disabled" : ""} type="button" title="docker compose pull (the output appears in Logs)">Pull</button>`
+          : ""
       }
       <button class="btn small" data-act="logs" data-cmd="${c.id}" type="button">Logs</button>
       <button class="btn small" data-act="copy" data-text="${esc(full)}" title="${esc(full)}" type="button">Copy</button>
@@ -276,6 +282,11 @@ document.addEventListener("click", async (ev) => {
       btn.disabled = true;
       await api(`/api/commands/${id}/restart`, { method: "POST" });
       toast("Restarted");
+    } else if (act === "pull") {
+      btn.disabled = true;
+      await api(`/api/commands/${id}/pull`, { method: "POST" });
+      toast("Pulling images… (see Logs)");
+      openLog(id);
     } else if (act === "logs") openLog(id);
     else if (act === "copy") {
       await copyText(btn.dataset.text);
@@ -305,7 +316,7 @@ document.addEventListener("click", async (ev) => {
   } catch (e) {
     toast(`Error: ${e.message}`);
   }
-  if (["stop", "restart", "kill"].includes(act)) refresh();
+  if (["stop", "restart", "kill", "pull"].includes(act)) refresh();
 });
 
 function switchTab(t) {

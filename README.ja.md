@@ -78,7 +78,7 @@ HOST=$TS_IP ALLOWED_HOSTS=$TS_IP,mymac,mymac.tail1234.ts.net bun start
 - コマンドの種類
   - **コマンド**: `$SHELL -c` で detached 起動。出力は `data/logs/<id>.log` に保存。
     App Manager を再起動してもプロセスは生き続け、PID で追跡を再開します。停止はプロセスグループごと SIGTERM → 5 秒後 SIGKILL。
-  - **docker compose**: `up -d [--build]` / `down`。状態は `docker ps` の compose ラベル（作業フォルダ・設定ファイル・プロジェクト名）で判定します。
+  - **docker compose**: `up -d [--build]` / `down`。**Pull** ボタンで `docker compose pull` を実行でき、出力は Logs で確認できます。状態は `docker ps` の compose ラベル（作業フォルダ・設定ファイル・プロジェクト名）で判定します。
 - **起動状態の可視化**
   - Running（起動中）/ Working（処理中）/ Stopped（停止）/ Crashed（異常終了）
   - **Running (external)**（管理外で起動中）: ターミナルなど App Manager 以外で起動したプロセスでも、

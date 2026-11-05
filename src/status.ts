@@ -57,7 +57,7 @@ export async function buildStatus(force = false) {
       let containers: Container[] = [];
       if (cmd.type === "compose") {
         containers = matchContainers(app, cmd, snap.containers);
-        if (composeJob(cmd.id)) status = "starting";
+        if (composeJob(cmd.id) && composeJob(cmd.id)!.action !== "pull") status = "starting";
         else if (containers.some((c) => c.state === "running")) status = "running";
         else if (containers.some((c) => c.state === "exited")) status = "exited";
       } else {
@@ -182,6 +182,7 @@ export async function buildStatus(force = false) {
         ...cmd,
         status: info.status,
         pid: info.pid,
+        job: cmd.type === "compose" ? composeJob(cmd.id)?.action : undefined,
         startedAt: info.status === "running" && cmd.type === "process" ? run?.startedAt : undefined,
         lastExit:
           run?.exitedAt && info.status !== "running"

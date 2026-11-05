@@ -3,7 +3,7 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { inspectDir } from "./inspect";
-import { HttpError, clearLog, logs, start, stop } from "./runner";
+import { HttpError, clearLog, logs, pull, start, stop } from "./runner";
 import { buildStatus, portConflictsBeforeStart } from "./status";
 import { type App, type Command, findCommand, getConfig, newId, saveConfig } from "./store";
 import { invalidate } from "./system";
@@ -160,6 +160,15 @@ const server = Bun.serve({
         handle(req, async () => {
           const { app, cmd } = cmdOr404(req.params.id);
           await stop(app, cmd);
+          return json({ ok: true });
+        }),
+    },
+
+    "/api/commands/:id/pull": {
+      POST: (req) =>
+        handle(req, () => {
+          const { app, cmd } = cmdOr404(req.params.id);
+          pull(app, cmd);
           return json({ ok: true });
         }),
     },
