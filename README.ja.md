@@ -91,6 +91,7 @@ HOST=$TS_IP ALLOWED_HOSTS=$TS_IP,mymac,mymac.tail1234.ts.net bun start
     そのフォルダがすでに登録済みなら **Add to app** になります（OS のデーモンなど cwd が `/` のものは対象外）
 - **Inspect folder** で `package.json` の scripts、`compose*.yml` の ports、`manage.py` / FastAPI などから起動コマンドの候補を提案
 - `cd <フォルダ> && <コマンド>` をワンクリックでコピー
+- Web アプリとして Dock に追加できます（Safari: ファイル > Dock に追加 / Chrome: App Manager をインストール）。専用のアイコンが付きます
 
 ## データ
 

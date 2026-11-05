@@ -91,6 +91,7 @@ Traffic is encrypted by WireGuard, but the browser still treats the page as plai
     If the folder is already registered, it becomes **Add to app** (OS daemons whose working folder is `/` are skipped)
 - **Inspect folder** suggests start commands from `package.json` scripts, ports in `compose*.yml`, `manage.py`, FastAPI apps and more
 - Copy `cd <folder> && <command>` with one click
+- Can be added to the Dock as a web app (Safari: File > Add to Dock / Chrome: Install App Manager), with its own icon
 
 ## Data
 
