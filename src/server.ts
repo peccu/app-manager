@@ -84,6 +84,9 @@ function guard(req: Request) {
 async function handle(req: Request, fn: () => Promise<Response> | Response) {
   try {
     guard(req);
+    // Bun.serve は既定で 10 秒無通信の接続を切る。docker compose down などは
+    // それより長くかかるので、操作系（GET 以外）のリクエストではタイムアウトを無効にする
+    if (req.method !== "GET") server.timeout(req, 0);
     const res = await fn();
     if (req.method !== "GET") invalidate();
     return res;
