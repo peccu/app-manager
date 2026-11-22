@@ -63,6 +63,25 @@ HOST=$TS_IP ALLOWED_HOSTS=$TS_IP,mymac,mymac.tail1234.ts.net bun start
 別のマシンから `http://100.64.0.1:4949`（MagicDNS なら `http://mymac:4949`）を開きます。
 通信は WireGuard で暗号化されますが、ブラウザからは HTTP として扱われます（コピー機能は代替手段で動きます）。
 
+### C. LAN と Tailscale の両方から使う（Linux・自動起動）
+
+`scripts/start-remote.sh` は `0.0.0.0` で待ち受け、LAN の IP・ホスト名と Tailscale の IP・名前を
+自動で `ALLOWED_HOSTS` に入れて起動します。Tailscale はホストの `tailscale` CLI か、
+docker の `tailscale` コンテナ（`TAILSCALE_CONTAINER` で変更可）から情報を取ります。
+
+```bash
+scripts/start-remote.sh            # その場で起動
+scripts/install-service.sh         # systemd ユーザーサービスとして登録（ホスト再起動後も自動起動）
+scripts/install-service.sh uninstall
+journalctl --user -u app-manager -f   # ログ
+```
+
+- ログイン前でも起動するよう `loginctl enable-linger` を有効にします
+- サービスはログインシェル（`bash -l` など）経由で起動するので、`.profile` の PATH が管理下のコマンドにも引き継がれます
+- `KillMode=process` なので、サービスを再起動・停止しても App Manager から起動したアプリは止まりません
+- LAN 内の誰でも任意のコマンドを実行できる状態になります。信頼できる LAN でのみ使ってください
+- 追加のホスト名は `EXTRA_ALLOWED_HOSTS`（カンマ区切り）で指定できます
+
 ### 共通の注意
 
 - tailnet に入っている全員（共有したデバイスを含む）が任意のコマンドを実行できる状態になります。

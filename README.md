@@ -63,6 +63,25 @@ HOST=$TS_IP ALLOWED_HOSTS=$TS_IP,mymac,mymac.tail1234.ts.net bun start
 Then open `http://100.64.0.1:4949` (or `http://mymac:4949` with MagicDNS).
 Traffic is encrypted by WireGuard, but the browser still treats the page as plain HTTP (the Copy buttons use a fallback that works without HTTPS).
 
+### C. From both the LAN and Tailscale (Linux, starts on boot)
+
+`scripts/start-remote.sh` listens on `0.0.0.0` and fills `ALLOWED_HOSTS` with the LAN IP and host name
+plus the Tailscale IP and names. It reads Tailscale info from the host's `tailscale` CLI, or from a
+docker container named `tailscale` (override with `TAILSCALE_CONTAINER`).
+
+```bash
+scripts/start-remote.sh            # run it now
+scripts/install-service.sh         # install as a systemd user service (starts again after a reboot)
+scripts/install-service.sh uninstall
+journalctl --user -u app-manager -f   # logs
+```
+
+- `loginctl enable-linger` is turned on so the service starts without anyone logging in
+- The service starts through your login shell (e.g. `bash -l`), so the PATH from `.profile` reaches managed commands
+- With `KillMode=process`, restarting or stopping the service does not stop the apps App Manager started
+- Anyone on the LAN can run arbitrary commands. Use this only on a LAN you trust
+- Add more host names with `EXTRA_ALLOWED_HOSTS` (comma-separated)
+
 ### Things to keep in mind
 
 - Everyone in your tailnet, including devices shared with you, can run arbitrary commands through App Manager.
